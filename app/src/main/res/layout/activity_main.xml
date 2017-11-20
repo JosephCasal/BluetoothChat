@@ -10,8 +10,19 @@
 
     <Button
         android:id="@+id/btnDiscoverable"
-        android:text="discoverable"
+        android:text="Make Discoverable"
         android:layout_width="match_parent"
         android:layout_height="wrap_content" />
+
+    <Button
+        android:id="@+id/btnScan"
+        android:text="Scan"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
+    <android.support.v7.widget.RecyclerView
+        android:id="@+id/rvDevices"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"/>
 
 </LinearLayout>

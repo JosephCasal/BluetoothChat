@@ -13,9 +13,12 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
 
 import java.util.Set;
 
@@ -30,6 +33,10 @@ public class MainActivity extends AppCompatActivity {
     private Set<BluetoothDevice> pairedDevices;
     private Button btnDiscoverable;
     private MyReceiver myReceiver;
+    private RecyclerView rvDevices;
+    private DeviceListAdapter deviceListAdapter;
+    private Button btnScan;
+    private boolean scanning;
 
     // TODO: 11/20/17 listen for ACTION_STATE_CHANGED broadcast intent, which the system broadcasts whenever the Bluetooth state changes
 
@@ -38,8 +45,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        scanning = false;
+
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         checkBTSupport();
+
+        rvDevices = findViewById(R.id.rvDevices);
+        deviceListAdapter = new DeviceListAdapter();
+        rvDevices.setLayoutManager(new LinearLayoutManager(this));
+        rvDevices.setAdapter(deviceListAdapter);
 
         btnDiscoverable = findViewById(R.id.btnDiscoverable);
         btnDiscoverable.setOnClickListener(new View.OnClickListener() {
@@ -51,6 +65,22 @@ public class MainActivity extends AppCompatActivity {
             }
         });
 
+        btnScan = findViewById(R.id.btnScan);
+        btnScan.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if(supported){
+                    if(!scanning) {
+                        checkPermission();
+                    }else{
+                        Toast.makeText(MainActivity.this, "still scanning", Toast.LENGTH_SHORT).show();
+                    }
+                }else{
+                    Toast.makeText(MainActivity.this, "Bluetooth not supported on this device", Toast.LENGTH_SHORT).show();
+                }
+            }
+        });
+
         // Register for broadcasts when a device is discovered.
         myReceiver = new MyReceiver();
         IntentFilter filter = new IntentFilter();
@@ -58,15 +88,6 @@ public class MainActivity extends AppCompatActivity {
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_STARTED);
         filter.addAction(BluetoothAdapter.ACTION_DISCOVERY_FINISHED);
         registerReceiver(myReceiver, filter);
-
-
-
-        if(supported){
-//            checkBTEnabled();
-            checkPermission();
-        }
-
-
 
     }
 
@@ -183,6 +204,7 @@ public class MainActivity extends AppCompatActivity {
                 String deviceHardwareAddress = device.getAddress(); // MAC address
                 Log.d(TAG, "getPairedDevices: deviceName: " + deviceName);
                 Log.d(TAG, "getPairedDevices: deviceHardwareAddress: " + deviceHardwareAddress);
+                deviceListAdapter.addDevice(device);
             }
         }else{
             Log.d(TAG, "getPairedDevices: no paired devices");
@@ -203,7 +225,9 @@ public class MainActivity extends AppCompatActivity {
                     BluetoothDevice device = intent.getParcelableExtra(BluetoothDevice.EXTRA_DEVICE);
                     String deviceName = device.getName();
                     String deviceHardwareAddress = device.getAddress(); // MAC address
-                    Log.d(TAG, "onReceive: " + deviceName + deviceHardwareAddress);
+                    Log.d(TAG, "onReceive: " + deviceName + " " + deviceHardwareAddress);
+
+                    deviceListAdapter.addDevice(device);
 
                     break;
 
@@ -211,11 +235,15 @@ public class MainActivity extends AppCompatActivity {
 
                     Log.d(TAG, "onReceive: discovery started");
 
+                    scanning = true;
+
                     break;
 
                 case BluetoothAdapter.ACTION_DISCOVERY_FINISHED:
 
                     Log.d(TAG, "onReceive: discovery finished");
+
+                    scanning = false;
 
                     break;
             }
