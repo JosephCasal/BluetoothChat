@@ -1,6 +1,8 @@
 package com.example.joseph.bluetoothchat;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
+import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.BroadcastReceiver;
@@ -8,8 +10,11 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
+import android.os.Handler;
+import android.os.Message;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.FragmentActivity;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -38,6 +43,11 @@ public class MainActivity extends AppCompatActivity {
     private Button btnScan;
     private boolean scanning;
 
+    private BluetoothChatService mChatService = null;
+    private String mConnectedDeviceName = null;
+
+    private Activity activity;
+
     // TODO: 11/20/17 listen for ACTION_STATE_CHANGED broadcast intent, which the system broadcasts whenever the Bluetooth state changes
 
     @Override
@@ -45,13 +55,15 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        activity = this;
+
         scanning = false;
 
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         checkBTSupport();
 
         rvDevices = findViewById(R.id.rvDevices);
-        deviceListAdapter = new DeviceListAdapter();
+        deviceListAdapter = new DeviceListAdapter(this);
         rvDevices.setLayoutManager(new LinearLayoutManager(this));
         rvDevices.setAdapter(deviceListAdapter);
 
@@ -59,6 +71,8 @@ public class MainActivity extends AppCompatActivity {
         btnDiscoverable.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                mChatService = new BluetoothChatService(activity, mHandler);
+                mChatService.start();
                 Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
                 discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
                 startActivityForResult(discoverableIntent, REQUEST_DISCOVERABLE);
@@ -155,6 +169,8 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }else{
             Log.d(TAG, "checkBTEnabled: BT already enabled");
+            mChatService = new BluetoothChatService(this, mHandler);
+            mChatService.start();
             getDevices();
         }
     }
@@ -168,6 +184,9 @@ public class MainActivity extends AppCompatActivity {
 
                 if(resultCode == RESULT_OK){
                     Log.d(TAG, "onActivityResult: BT enabled");
+                    // Initialize the BluetoothChatService to perform bluetooth connections
+                    mChatService = new BluetoothChatService(this, mHandler);
+                    mChatService.start();
                     getDevices();
                 }else{
                     // RESULT_CANCEL
@@ -257,5 +276,76 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onDestroy: ");
 //        mBluetoothAdapter.cancelDiscovery();
         unregisterReceiver(myReceiver);
+        mChatService.stop();
     }
+
+
+    public void connectDevice(BluetoothDevice device) {
+        // Get the device MAC address
+//        String address = data.getExtras().getString(DeviceListActivity.EXTRA_DEVICE_ADDRESS);
+        // Get the BluetoothDevice object
+//        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
+        // Attempt to connect to the device
+        mChatService.connect(device, true);
+    }
+
+
+    /**
+     * The Handler that gets information back from the BluetoothChatService
+     */
+    @SuppressLint("HandlerLeak")
+    private final Handler mHandler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            switch (msg.what) {
+                case Constants.MESSAGE_STATE_CHANGE:
+                    switch (msg.arg1) {
+                        case BluetoothChatService.STATE_CONNECTED:
+//                            setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
+//                            mConversationArrayAdapter.clear();
+                            Log.d(TAG, "handleMessage: connected to: " + mConnectedDeviceName);
+                            break;
+                        case BluetoothChatService.STATE_CONNECTING:
+//                            setStatus(R.string.title_connecting);
+                            Log.d(TAG, "handleMessage: connecting...");
+                            break;
+                        case BluetoothChatService.STATE_LISTEN:
+                        case BluetoothChatService.STATE_NONE:
+//                            setStatus(R.string.title_not_connected);
+                            Log.d(TAG, "handleMessage: not connected");
+                            break;
+                    }
+                    break;
+                case Constants.MESSAGE_WRITE:
+                    byte[] writeBuf = (byte[]) msg.obj;
+                    // construct a string from the buffer
+                    String writeMessage = new String(writeBuf);
+//                    mConversationArrayAdapter.add("Me:  " + writeMessage);
+                    Log.d(TAG, "handleMessage: Me: " + writeMessage);
+                    break;
+                case Constants.MESSAGE_READ:
+                    byte[] readBuf = (byte[]) msg.obj;
+                    // construct a string from the valid bytes in the buffer
+                    String readMessage = new String(readBuf, 0, msg.arg1);
+//                    mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
+                    Log.d(TAG, "handleMessage: " + readMessage);
+                    break;
+                case Constants.MESSAGE_DEVICE_NAME:
+                    // save the connected device's name
+                    mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
+                    if (null != activity) {
+                        Toast.makeText(activity, "Connected to "
+                                + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+                    }
+                    break;
+                case Constants.MESSAGE_TOAST:
+                    if (null != activity) {
+                        Toast.makeText(activity, msg.getData().getString(Constants.TOAST),
+                                Toast.LENGTH_SHORT).show();
+                    }
+                    break;
+            }
+        }
+    };
+
 }

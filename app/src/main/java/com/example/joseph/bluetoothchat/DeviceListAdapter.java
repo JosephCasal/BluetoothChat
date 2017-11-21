@@ -1,7 +1,10 @@
 package com.example.joseph.bluetoothchat;
 
+import android.app.Activity;
+import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.Intent;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -19,6 +22,11 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
 
     List<BluetoothDevice> deviceList = new ArrayList<>();
     Context context;
+    Activity activity;
+
+    public DeviceListAdapter(Activity activity){
+        this.activity = activity;
+    }
 
     @Override
     public ViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
@@ -32,6 +40,7 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
     public void onBindViewHolder(ViewHolder holder, int position) {
 
         BluetoothDevice device = deviceList.get(position);
+        holder.device = device;
         if(device.getName() == null){
             holder.tvName.setText(device.getAddress());
         }else{
@@ -53,10 +62,21 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
     public class ViewHolder extends RecyclerView.ViewHolder {
 
         TextView tvName;
+        BluetoothDevice device;
 
         public ViewHolder(View itemView) {
             super(itemView);
             tvName = itemView.findViewById(R.id.tvName);
+
+            itemView.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View view) {
+                    Intent intent = new Intent(context, ChatActivity.class);
+                    context.startActivity(intent);
+                    ((MainActivity)activity).connectDevice(device);
+                }
+            });
+
         }
     }
 }
