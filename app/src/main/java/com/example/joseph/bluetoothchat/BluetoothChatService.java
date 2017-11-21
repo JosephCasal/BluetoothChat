@@ -62,6 +62,7 @@ public class BluetoothChatService {
     private ConnectedThread mConnectedThread;
     private int mState;
     private int mNewState;
+    private Context context;
 
     // Constants that indicate the current connection state
     public static final int STATE_NONE = 0;       // we're doing nothing
@@ -80,6 +81,7 @@ public class BluetoothChatService {
         mState = STATE_NONE;
         mNewState = mState;
         mHandler = handler;
+        this.context = context;
     }
 
     /**
@@ -200,6 +202,8 @@ public class BluetoothChatService {
         // Start the thread to manage the connection and perform transmissions
         mConnectedThread = new ConnectedThread(socket, socketType);
         mConnectedThread.start();
+
+//        ((MainActivity)context).startchat(socket, device);
 
         // Send the name of the connected device back to the UI Activity
         Message msg = mHandler.obtainMessage(Constants.MESSAGE_DEVICE_NAME);
@@ -352,8 +356,7 @@ public class BluetoothChatService {
                             case STATE_LISTEN:
                             case STATE_CONNECTING:
                                 // Situation normal. Start the connected thread.
-                                connected(socket, socket.getRemoteDevice(),
-                                        mSocketType);
+                                connected(socket, socket.getRemoteDevice(), mSocketType);
                                 break;
                             case STATE_NONE:
                             case STATE_CONNECTED:

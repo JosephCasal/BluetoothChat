@@ -5,6 +5,7 @@ import android.bluetooth.BluetoothClass;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
 import android.content.Intent;
+import android.os.Bundle;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -71,8 +72,11 @@ public class DeviceListAdapter extends RecyclerView.Adapter<DeviceListAdapter.Vi
             itemView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    Intent intent = new Intent(context, ChatActivity.class);
-                    context.startActivity(intent);
+//                    Intent intent = new Intent(context, ChatActivity.class);
+//                    Bundle bundle = new Bundle();
+//                    bundle.putParcelable("device", device);
+//                    intent.putExtras(bundle);
+//                    context.startActivity(intent);
                     ((MainActivity)activity).connectDevice(device);
                 }
             });

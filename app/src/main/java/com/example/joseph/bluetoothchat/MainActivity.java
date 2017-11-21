@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothSocket;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -48,6 +49,8 @@ public class MainActivity extends AppCompatActivity {
 
     private Activity activity;
 
+    private MyApplication application;
+
     // TODO: 11/20/17 listen for ACTION_STATE_CHANGED broadcast intent, which the system broadcasts whenever the Bluetooth state changes
 
     @Override
@@ -56,6 +59,9 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         activity = this;
+
+        application = (MyApplication)getApplication();
+        application.activity = this;
 
         scanning = false;
 
@@ -71,8 +77,10 @@ public class MainActivity extends AppCompatActivity {
         btnDiscoverable.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                mChatService = new BluetoothChatService(activity, mHandler);
-                mChatService.start();
+//                mChatService = new BluetoothChatService(activity, mHandler);
+//                mChatService.start();
+                application.startBluetoothChatService();
+                application.bluetoothChatService.start();
                 Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
                 discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
                 startActivityForResult(discoverableIntent, REQUEST_DISCOVERABLE);
@@ -169,8 +177,10 @@ public class MainActivity extends AppCompatActivity {
             startActivityForResult(enableBtIntent, REQUEST_ENABLE_BT);
         }else{
             Log.d(TAG, "checkBTEnabled: BT already enabled");
-            mChatService = new BluetoothChatService(this, mHandler);
-            mChatService.start();
+//            mChatService = new BluetoothChatService(this, mHandler);
+//            mChatService.start();
+            application.startBluetoothChatService();
+            application.bluetoothChatService.start();
             getDevices();
         }
     }
@@ -185,8 +195,10 @@ public class MainActivity extends AppCompatActivity {
                 if(resultCode == RESULT_OK){
                     Log.d(TAG, "onActivityResult: BT enabled");
                     // Initialize the BluetoothChatService to perform bluetooth connections
-                    mChatService = new BluetoothChatService(this, mHandler);
-                    mChatService.start();
+//                    mChatService = new BluetoothChatService(this, mHandler);
+//                    mChatService.start();
+                    application.startBluetoothChatService();
+                    application.bluetoothChatService.start();
                     getDevices();
                 }else{
                     // RESULT_CANCEL
@@ -276,7 +288,8 @@ public class MainActivity extends AppCompatActivity {
         Log.d(TAG, "onDestroy: ");
 //        mBluetoothAdapter.cancelDiscovery();
         unregisterReceiver(myReceiver);
-        mChatService.stop();
+//        mChatService.stop();
+        application.bluetoothChatService.stop();
     }
 
 
@@ -286,66 +299,75 @@ public class MainActivity extends AppCompatActivity {
         // Get the BluetoothDevice object
 //        BluetoothDevice device = mBluetoothAdapter.getRemoteDevice(address);
         // Attempt to connect to the device
-        mChatService.connect(device, true);
+//        mChatService.connect(device, true);
+        application.bluetoothChatService.connect(device, true);
     }
 
+//    public void startchat(BluetoothSocket socket, BluetoothDevice device){
+//        Log.d(TAG, "startchat: " + device.getName());
+//        Intent intent = new Intent(this, ChatActivity.class);
+//        Bundle bundle = new Bundle();
+//        bundle.putParcelable("socket", socket);
+//        intent.putExtras()
+//    }
 
-    /**
-     * The Handler that gets information back from the BluetoothChatService
-     */
-    @SuppressLint("HandlerLeak")
-    private final Handler mHandler = new Handler() {
-        @Override
-        public void handleMessage(Message msg) {
-            switch (msg.what) {
-                case Constants.MESSAGE_STATE_CHANGE:
-                    switch (msg.arg1) {
-                        case BluetoothChatService.STATE_CONNECTED:
-//                            setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
-//                            mConversationArrayAdapter.clear();
-                            Log.d(TAG, "handleMessage: connected to: " + mConnectedDeviceName);
-                            break;
-                        case BluetoothChatService.STATE_CONNECTING:
-//                            setStatus(R.string.title_connecting);
-                            Log.d(TAG, "handleMessage: connecting...");
-                            break;
-                        case BluetoothChatService.STATE_LISTEN:
-                        case BluetoothChatService.STATE_NONE:
-//                            setStatus(R.string.title_not_connected);
-                            Log.d(TAG, "handleMessage: not connected");
-                            break;
-                    }
-                    break;
-                case Constants.MESSAGE_WRITE:
-                    byte[] writeBuf = (byte[]) msg.obj;
-                    // construct a string from the buffer
-                    String writeMessage = new String(writeBuf);
-//                    mConversationArrayAdapter.add("Me:  " + writeMessage);
-                    Log.d(TAG, "handleMessage: Me: " + writeMessage);
-                    break;
-                case Constants.MESSAGE_READ:
-                    byte[] readBuf = (byte[]) msg.obj;
-                    // construct a string from the valid bytes in the buffer
-                    String readMessage = new String(readBuf, 0, msg.arg1);
-//                    mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
-                    Log.d(TAG, "handleMessage: " + readMessage);
-                    break;
-                case Constants.MESSAGE_DEVICE_NAME:
-                    // save the connected device's name
-                    mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
-                    if (null != activity) {
-                        Toast.makeText(activity, "Connected to "
-                                + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
-                    }
-                    break;
-                case Constants.MESSAGE_TOAST:
-                    if (null != activity) {
-                        Toast.makeText(activity, msg.getData().getString(Constants.TOAST),
-                                Toast.LENGTH_SHORT).show();
-                    }
-                    break;
-            }
-        }
-    };
+//    /**
+//     * The Handler that gets information back from the BluetoothChatService
+//     */
+//    @SuppressLint("HandlerLeak")
+//    private final Handler mHandler = new Handler() {
+//        @Override
+//        public void handleMessage(Message msg) {
+//
+//            switch (msg.what) {
+//                case Constants.MESSAGE_STATE_CHANGE:
+//                    switch (msg.arg1) {
+//                        case BluetoothChatService.STATE_CONNECTED:
+////                            setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
+////                            mConversationArrayAdapter.clear();
+//                            Log.d(TAG, "handleMessage: connected to: " + mConnectedDeviceName);
+//                            break;
+//                        case BluetoothChatService.STATE_CONNECTING:
+////                            setStatus(R.string.title_connecting);
+//                            Log.d(TAG, "handleMessage: connecting...");
+//                            break;
+//                        case BluetoothChatService.STATE_LISTEN:
+//                        case BluetoothChatService.STATE_NONE:
+////                            setStatus(R.string.title_not_connected);
+//                            Log.d(TAG, "handleMessage: not connected");
+//                            break;
+//                    }
+//                    break;
+//                case Constants.MESSAGE_WRITE:
+//                    byte[] writeBuf = (byte[]) msg.obj;
+//                    // construct a string from the buffer
+//                    String writeMessage = new String(writeBuf);
+////                    mConversationArrayAdapter.add("Me:  " + writeMessage);
+//                    Log.d(TAG, "handleMessage: Me: " + writeMessage);
+//                    break;
+//                case Constants.MESSAGE_READ:
+//                    byte[] readBuf = (byte[]) msg.obj;
+//                    // construct a string from the valid bytes in the buffer
+//                    String readMessage = new String(readBuf, 0, msg.arg1);
+////                    mConversationArrayAdapter.add(mConnectedDeviceName + ":  " + readMessage);
+//                    Log.d(TAG, "handleMessage: " + readMessage);
+//                    break;
+//                case Constants.MESSAGE_DEVICE_NAME:
+//                    // save the connected device's name
+//                    mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
+//                    if (null != activity) {
+//                        Toast.makeText(activity, "Connected to "
+//                                + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+//                    }
+//                    break;
+//                case Constants.MESSAGE_TOAST:
+//                    if (null != activity) {
+//                        Toast.makeText(activity, msg.getData().getString(Constants.TOAST),
+//                                Toast.LENGTH_SHORT).show();
+//                    }
+//                    break;
+//            }
+//        }
+//    };
 
 }
